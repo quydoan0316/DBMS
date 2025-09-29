@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Patients Medical History</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 24px;
+            background: #fafafa;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .title {
+            margin: 0;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            font-size: 15px;
+            border-radius: 8px;
+            border: 1px solid #d0d0d0;
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn.primary {
+            background: #2563eb;
+            color: white;
+            border-color: #1e40af;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: white;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .row > * { 
+            flex: 1 1 260px;   /* let items wrap when space is tight */
+            min-width: 220px;
+        }
+
+        input { 
+            box-sizing: border-box;  /* prevent overflow calculation issues */
+        }
+
+        /* Optional: on very small screens, make the button full width */
+        @media (max-width: 420px) {
+            #btn-load {
+                width: 100%;
+            }
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            font-size: 16px;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .status {
+            margin-top: 8px;
+            color: #444;
+            font-size: 14px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        .table th,
+        .table td {
+            border-bottom: 1px solid #eee;
+            padding: 10px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 50;
+        }
+
+        .modal {
+            width: 100%;
+            max-width: 520px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 12px 16px;
+            font-weight: 700;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-body {
+            padding: 16px;
+        }
+
+        .modal-actions {
+            padding: 12px 16px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            font-size: 16px;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            resize: vertical;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h2 class="title">Lịch sử tái khám</h2>
+        <button id="open-modal" class="btn primary">+ Thêm lịch sử tái khám</button>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;margin-bottom:12px;">Tìm lịch sử theo Patient ID</h3>
+        <div class="row">
+            <div>
+                <label for="search_patient_id">Patient ID</label>
+                <input id="search_patient_id" type="number" min="1" placeholder="VD: 1, 2, 3..." />
+            </div>
+            <div style="flex:0 0 auto; align-self: flex-end;">
+                <button id="btn-load" class="btn">Tìm</button>
+            </div>
+        </div>
+        <div id="status" class="status"></div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;margin-bottom:12px;">Kết quả</h3>
+        <div id="empty" class="muted">Chưa có dữ liệu.</div>
+        <table id="result-table" class="table" style="display:none;">
+            <thead>
+                <tr>
+                    <th>Patient ID</th>
+                    <th>Note</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody id="result-body"></tbody>
+        </table>
+    </div>
+
+    <!-- Modal Add -->
+    <div id="modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal">
+            <div class="modal-header" id="modal-title">Thêm lịch sử tái khám</div>
+            <div class="modal-body">
+                <div style="margin-bottom:12px;">
+                    <label for="modal_patient_id">Patient ID</label>
+                    <input id="modal_patient_id" type="number" min="1" placeholder="VD: 1, 2, 3..." />
+                </div>
+                <div>
+                    <label for="modal_progress_note">Ghi chú</label>
+                    <textarea id="modal_progress_note" placeholder="Ghi chú tiến triển..."></textarea>
+                </div>
+                <div id="modal_status" class="status"></div>
+            </div>
+            <div class="modal-actions">
+                <button id="modal_cancel" class="btn">Hủy</button>
+                <button id="modal_submit" class="btn primary">Thêm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const emptyEl = document.getElementById('empty');
+        const tableEl = document.getElementById('result-table');
+        const tbodyEl = document.getElementById('result-body');
+
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalPatientId = document.getElementById('modal_patient_id');
+        const modalNote = document.getElementById('modal_progress_note');
+        const modalStatus = document.getElementById('modal_status');
+
+        const searchPatientInput = document.getElementById('search_patient_id');
+
+        function apiBase() {
+            // Relative path since served at /app
+            return 'http://127.0.0.1:8000';
+        }
+
+        function setStatus(msg) {
+            statusEl.textContent = msg || '';
+        }
+
+        function formatDate(iso) {
+                try {
+                    if (!iso) return '';
+                    // Ép parse ISO cho chuẩn
+                    const d = new Date(Date.parse(iso));
+                    return new Intl.DateTimeFormat('vi-VN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        timeZone: 'Asia/Ho_Chi_Minh'
+                    }).format(d);
+                } catch {
+                    return iso;
+                }
+            }
+
+        function renderRows(items) {
+            tbodyEl.innerHTML = '';
+            items.forEach(it => {
+                const tr = document.createElement('tr');
+
+                const tdId = document.createElement('td');
+                tdId.textContent = it.patient_id ?? '';
+                tr.appendChild(tdId);
+
+                const tdNote = document.createElement('td');
+                tdNote.textContent = it.progress_note ?? '';
+                tr.appendChild(tdNote);
+
+                const tdDate = document.createElement('td');
+                console.log("it.date", it.date);
+                tdDate.textContent = formatDate(it.date);
+                console.log("tdDate.textContent", tdDate.textContent);
+                tr.appendChild(tdDate);
+
+                tbodyEl.appendChild(tr);
+            });
+        }
+
+        async function loadHistory() {
+            const patientId = parseInt(searchPatientInput.value, 10);
+            if (!patientId || patientId <= 0) {
+                setStatus('Vui lòng nhập patient_id hợp lệ (> 0).');
+                tableEl.style.display = 'none';
+                emptyEl.style.display = '';
+                return;
+            }
+
+            setStatus('Đang tải lịch sử...');
+            try {
+                const res = await fetch(apiBase() + '/medical-history/' + encodeURIComponent(patientId));
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Load thất bại');
+
+                const items = Array.isArray(data.items) ? data.items : [];
+                if (items.length) {
+                    renderRows(items);
+                    emptyEl.style.display = 'none';
+                    tableEl.style.display = '';
+                } else {
+                    tableEl.style.display = 'none';
+                    emptyEl.style.display = '';
+                    emptyEl.textContent = 'Không có lịch sử.';
+                }
+                setStatus('Tải xong.');
+            } catch (err) {
+                setStatus('Lỗi: ' + err.message);
+                tableEl.style.display = 'none';
+                emptyEl.style.display = '';
+                emptyEl.textContent = 'Không tải được dữ liệu.';
+            }
+        }
+
+        function openModal(prefillPatientId) {
+            modalBackdrop.style.display = 'flex';
+            modalStatus.textContent = '';
+            if (prefillPatientId && prefillPatientId > 0) {
+                modalPatientId.value = prefillPatientId;
+            } else if (searchPatientInput.value) {
+                modalPatientId.value = searchPatientInput.value;
+            } else {
+                modalPatientId.value = '';
+            }
+            modalNote.value = '';
+            setTimeout(() => modalPatientId.focus(), 0);
+        }
+
+        function closeModal() {
+            modalBackdrop.style.display = 'none';
+        }
+
+        async function submitModal() {
+            const patientId = parseInt(modalPatientId.value, 10);
+            const note = modalNote.value.trim();
+
+            if (!patientId || patientId <= 0) {
+                modalStatus.textContent = 'Vui lòng nhập patient_id hợp lệ (> 0).';
+                return;
+            }
+            if (!note) {
+                modalStatus.textContent = 'Vui lòng nhập ghi chú.';
+                return;
+            }
+
+            modalStatus.textContent = 'Đang thêm...';
+            try {
+                const res = await fetch(apiBase() + '/medical-history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ patient_id: patientId, progress_note: note })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Insert thất bại');
+
+                modalStatus.textContent = 'Thêm thành công.';
+                // Refresh current view if matching patient
+                if (parseInt(searchPatientInput.value, 10) === patientId) {
+                    await loadHistory();
+                }
+                closeModal();
+            } catch (err) {
+                modalStatus.textContent = 'Lỗi: ' + err.message;
+            }
+        }
+
+        document.getElementById('btn-load').addEventListener('click', loadHistory);
+        document.getElementById('open-modal').addEventListener('click', () => openModal());
+        document.getElementById('modal_cancel').addEventListener('click', closeModal);
+        document.getElementById('modal_submit').addEventListener('click', submitModal);
+
+        // Enter key in search triggers load
+        searchPatientInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                loadHistory();
+            }
+        });
+    </script>
+</body>
+
+</html>

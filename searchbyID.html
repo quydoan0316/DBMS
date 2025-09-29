@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Search Patient by ID</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  input, button { padding: 5px; margin: 5px; }
+  .patient { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; }
+  .patient h3 { margin: 0 0 10px 0; }
+
+  .folder { margin: 10px 0 10px 20px; }
+  .folder h4 { margin: 0; cursor: pointer; color: #007bff; font-size: 16px; }
+
+  .image-meta { 
+    display: flex; 
+    align-items: flex-start; 
+    margin: 10px 0 15px 20px;
+  }
+
+  .image-meta img { 
+    max-width: 800px;
+    margin-right: 20px; 
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+
+  .metadata { 
+    font-size: 14px; 
+    background: #f9f9f9; 
+    padding: 10px; 
+    border-radius: 5px;
+    flex: 1;
+  }
+</style>
+</head>
+<body>
+
+<h1>Search Patient by ID</h1>
+<input type="number" id="patientId" placeholder="Enter patient ID">
+<button onclick="searchById()">Search</button>
+
+<div id="results"></div>
+
+<script>
+// =============== Render đệ quy folder ===============
+function renderFolder(folderData, folderName) {
+    const folderDiv = document.createElement("div");
+    folderDiv.className = "folder";
+
+    const header = document.createElement("h4");
+    header.textContent = `📂 ${folderName}`;
+    folderDiv.appendChild(header);
+
+    const contentDiv = document.createElement("div");
+    contentDiv.style.display = "none"; // ẩn mặc định
+
+    if (Array.isArray(folderData)) {
+        // folderData là mảng => danh sách ảnh
+        folderData.forEach(imgObj => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "image-meta";
+
+            const img = document.createElement("img");
+            img.src = `data:image/png;base64,${imgObj.image_base64}`;
+            wrapper.appendChild(img);
+
+            const metaDiv = document.createElement("div");
+            metaDiv.className = "metadata";
+            let metaHtml = "<b>Metadata:</b><br>";
+            for (const [key, value] of Object.entries(imgObj.metadata)) {
+                metaHtml += `${key}: ${value}<br>`;
+            }
+            metaHtml += `<br><b>Filename:</b> ${imgObj.filename}`;
+            metaDiv.innerHTML = metaHtml;
+
+            wrapper.appendChild(metaDiv);
+            contentDiv.appendChild(wrapper);
+        });
+    } else {
+        // folderData là object => thư mục con
+        for (const [subFolderName, subFolderData] of Object.entries(folderData)) {
+            contentDiv.appendChild(renderFolder(subFolderData, subFolderName));
+        }
+    }
+
+    // toggle mở/đóng
+    header.addEventListener("click", () => {
+        contentDiv.style.display =
+            contentDiv.style.display === "none" ? "block" : "none";
+    });
+
+    folderDiv.appendChild(contentDiv);
+    return folderDiv;
+}
+
+// =============== Search patient by ID ===============
+async function searchById() {
+    const patientId = document.getElementById("patientId").value;
+    const resultsDiv = document.getElementById("results");
+    if (!patientId) {
+        resultsDiv.innerHTML = "Please enter a patient ID.";
+        return;
+    }
+
+    resultsDiv.innerHTML = "Loading...";
+
+    try {
+        const url = `http://127.0.0.1:8000/search_patient_by_id?patient_id=${patientId}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+            const errText = await res.text();
+            resultsDiv.innerHTML = `Error: ${errText}`;
+            return;
+        }
+
+        const patient = await res.json();
+        resultsDiv.innerHTML = "";
+
+        const div = document.createElement("div");
+        div.className = "patient";
+
+        div.innerHTML = `
+            <h3>Patient: ${patient.patient_id}</h3>
+            <p><b>Diagnosis:</b> ${patient.diagnosis}</p>
+            <p><b>Regimen:</b> ${patient.regimen}</p>
+        `;
+
+        // duyệt đệ quy thư mục
+        for (const [folderName, folderData] of Object.entries(patient.folders)) {
+            div.appendChild(renderFolder(folderData, folderName));
+        }
+
+        resultsDiv.appendChild(div);
+
+    } catch (err) {
+        console.error(err);
+        resultsDiv.innerHTML = "Error fetching data.";
+    }
+}
+</script>
+
+</body>
+</html>

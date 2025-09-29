@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Upload Patient Record</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  input, button { padding: 5px; margin: 5px; }
+  .result { margin-top: 20px; white-space: pre-wrap; background: #f9f9f9; padding: 10px; border: 1px solid #ccc; }
+</style>
+</head>
+<body>
+
+<h1>Upload Patient Record</h1>
+
+<label>Diagnosis:</label>
+<input type="text" id="diagnosis" placeholder="Enter diagnosis"><br><br>
+<label>Regimen:</label>
+<input type="text" id="regimen" placeholder="Enter regimen"><br><br>
+
+<label>Choose Patient Folder (ZIP):</label>
+<input type="file" id="zipFile" accept=".zip"><br><br>
+
+<button onclick="uploadPatient()">Upload</button>
+
+<div id="result" class="result"></div>
+
+<script>
+async function uploadPatient() {
+    const diagnosis = document.getElementById("diagnosis").value;
+    const regimen = document.getElementById("regimen").value;
+    const zipFile = document.getElementById("zipFile").files[0];
+    const resultDiv = document.getElementById("result");
+
+    if (!diagnosis || !zipFile) {
+        resultDiv.innerHTML = "⚠️ Please enter diagnosis and select a zip file.";
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("diagnosis", diagnosis);
+    formData.append("regimen", regimen);
+    formData.append("zip_file", zipFile);
+
+    resultDiv.innerHTML = "⏳ Uploading...";
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/add_patient_from_folder", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            resultDiv.innerHTML = "❌ Error: " + errText;
+            return;
+        }
+
+        const data = await res.json();
+        resultDiv.innerHTML = "✅ Upload successful!\n\n" + JSON.stringify(data, null, 2);
+
+    } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = "❌ Upload failed.";
+    }
+}
+</script>
+
+</body>
+</html>
