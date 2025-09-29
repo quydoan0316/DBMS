@@ -82,7 +82,9 @@ Bạn cần chỉnh lại DATA_DIR để trỏ tới thư mục chứa dữ li�
 Tạo và kích hoạt môi trường ảo:
 
 `python -m venv venv # tạo môi trường ảo`
+
 `venv\Scripts\activate # Windows`
+
 `source venv/bin/activate # Linux / MacOS`
 
 Cài đặt dependencies:
